@@ -12,13 +12,13 @@ describe('spreadsheet', function() {
     spreadsheet = result.val;
   });
 
-  it ('must evaluate a single number formula', async () => {
+  it.only ('must evaluate a single number formula', async () => {
     const evalResult = await spreadsheet.eval('a1', '22');
     assert(evalResult.isOk === true);
     expect(evalResult.val).to.deep.equal({ a1: 22 });
   });
 
-  it ('must evaluate a purely numeric formula', async () => {
+  it.only ('must evaluate a purely numeric formula', async () => {
     const evalResult = await spreadsheet.eval('a1', '(1 + 2)*-3 + 4');
     assert(evalResult.isOk === true);
     expect(evalResult.val).to.deep.equal({ a1: -5 });

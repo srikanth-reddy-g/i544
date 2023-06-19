@@ -1,6 +1,8 @@
+import { ok } from 'assert';
 import { default as parse, CellRef, Ast } from './expr-parser.js';
 
 import { Result, okResult, errResult } from 'cs544-js-utils';
+import exp from 'constants';
 
 //factory method
 export default async function makeSpreadsheet(name: string): Promise<Result<Spreadsheet>> {
@@ -11,9 +13,11 @@ type Updates = { [cellId: string]: number };
 
 export class Spreadsheet {
   readonly name: string;
+  private cells: { [cellId: string]: Ast | undefined };
   //TODO: add other instance variable declarations
   constructor(name: string) {
     this.name = name;
+    this.cells = {};
     //TODO: add initializations for other instance variables
   }
 
@@ -32,8 +36,9 @@ export class Spreadsheet {
     //TODO
     try {
       const parsedExpr = parse(expr, cellId);
+      console.log(JSON.stringify(parsedExpr, null, 2));
       if (parsedExpr.isOk) {
-        const result = this.evaluateExpression(parsedExpr.val);
+        const result = this.evaluateExpression(parsedExpr.val,cellId);
         return okResult({ [cellId]: result });
       } else {
         return errResult(parsedExpr, 'SYNTAX');
@@ -43,21 +48,31 @@ export class Spreadsheet {
     }
   }
 
-  private evaluateExpression(expr: Ast): number {
+  private evaluateExpression(expr: Ast, baseCellId: string): number {
     if (expr.kind === 'num') {
       return expr.value;
     } else if (expr.kind === 'app') {
       const fn = expr.fn;
-      const args = expr.kids.map((kid) => this.evaluateExpression(kid));
+      const args = expr.kids.map((kid) => this.evaluateExpression(kid, baseCellId));
       if (FNS[fn]) {
         return FNS[fn].apply(null, args);
       } else {
         throw new Error(`Unknown function: ${fn}`);
       }
+    } else if (expr.kind === 'ref') {
+      const baseCellRef = CellRef.parseRef(baseCellId);
+      const cellId = expr.toText(baseCellRef);
+      if (this.cells[cellId] !== undefined) {
+        return this.evaluateExpression(this.cells[cellId]!, cellId);
+      } else {
+        return 0; // undefined cell is treated as 0
+      }
     } else {
       throw new Error(`Invalid expression: ${expr}`);
     }
   }
+  
+  
   // return okResult({}); //initial dummy result
 
   //TODO: add additional methods

@@ -8,17 +8,25 @@ export default async function makeSpreadsheet(name: string): Promise<Result<Spre
 
 type Updates = { [cellId: string]: number };
 
+interface UndoObject {
+  cellId: string;
+  property: string;
+  oldValue: any;
+}
+
 export class Spreadsheet {
   readonly name: string;
   cells: { [cellId: string]: Ast }; // Store the parsed expression for each cell
   values: { [cellId: string]: number }; // Store the evaluated value for each cell
   visitedCells: string[];
+  undoStack: UndoObject[]; 
 
   constructor(name: string) {
     this.name = name;
     this.cells = {};
     this.values = {};
     this.visitedCells = [];
+    this.undoStack = [];
   }
 
   async eval(cellId: string, expr: string): Promise<Result<Updates>> {
@@ -28,6 +36,12 @@ export class Spreadsheet {
     }
 
     // Mark the current cell as visited
+
+    const undoObject: UndoObject = {
+      cellId,
+      property: 'value',
+      oldValue: this.values[cellId]
+    };
     
     try {
       const parsedExpr = parse(expr, cellId);
@@ -54,6 +68,8 @@ export class Spreadsheet {
         return errResult(parsedExpr, 'SYNTAX');
       }
     } catch (error) {
+      this.undoStack.push(undoObject);
+      this.values[cellId] = undoObject.oldValue;
       return errResult(error, 'SYNTAX');
     } finally {
       this.visitedCells = [];
@@ -76,6 +92,7 @@ export class Spreadsheet {
       const cellId = expr.toText(baseCellRef);
       this.visitedCells.push(cellId);
       if (this.visitedCells.includes(baseCellId)) {
+        this.rollbackChanges();
         const msg = `cyclic dependency ...`;
         throw  errResult(msg, 'CIRCULAR_REF');
       }
@@ -131,9 +148,19 @@ export class Spreadsheet {
       return false;
     }
   }
+
+
+  private rollbackChanges() {
+    while (this.undoStack.length > 0) {
+      const undoObject = this.undoStack.pop();
+      if (undoObject) {
+        this.values[undoObject.cellId] = undoObject.oldValue;
+      }
+    }
+  }
+  
   
 }
-
 const FNS = {
   '+': (a: number, b: number): number => a + b,
   '-': (a: number, b?: number): number => (b === undefined ? -a : a - b),

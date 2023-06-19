@@ -36,7 +36,7 @@ export class Spreadsheet {
     //TODO
     try {
       const parsedExpr = parse(expr, cellId);
-      console.log(JSON.stringify(parsedExpr, null, 2));
+      // console.log(JSON.stringify(parsedExpr, null, 2));
       if (parsedExpr.isOk) {
         const result = this.evaluateExpression(parsedExpr.val,cellId);
         return okResult({ [cellId]: result });

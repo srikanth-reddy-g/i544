@@ -22,17 +22,17 @@ export class Spreadsheet {
   async eval(cellId: string, expr: string): Promise<Result<Updates>> {
     try {
       const parsedExpr = parse(expr, cellId);
-      console.log(JSON.stringify(parsedExpr, null, 2));
+      // console.log(JSON.stringify(parsedExpr, null, 2));
       if (parsedExpr.isOk) {
         this.cells[cellId] = parsedExpr.val; // Store the parsed expression
         const result = this.evaluateExpression(parsedExpr.val,cellId);
         this.values[cellId] = result; // Store the evaluated value
-        console.log("Values stored in "+ cellId + " is "+this.values[cellId]);
+        // console.log("Values stored in "+ cellId + " is "+this.values[cellId]);
         const updates: Updates = { [cellId]: result };
         for (const key in updates) {
           if (updates.hasOwnProperty(key)) {
             const value = updates[key];
-            console.log(`Key: ${key}, Value: ${value}`);
+            // console.log(`Key: ${key}, Value: ${value}`);
           }
         }
         // Update dependent cells recursively
@@ -107,5 +107,3 @@ const FNS = {
   min: (a: number, b: number): number => Math.min(a, b),
   max: (a: number, b: number): number => Math.max(a, b),
 };
-
-export { makeSpreadsheet };

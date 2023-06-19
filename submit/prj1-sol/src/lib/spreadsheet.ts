@@ -60,6 +60,10 @@ export class Spreadsheet {
     } else if (expr.kind === 'ref') {
       const baseCellRef = CellRef.parseRef(baseCellId);
       const cellId = expr.toText(baseCellRef);
+      if(cellId === baseCellId){
+        const msg = `cyclic dependency ...`;
+        throw  errResult(msg, 'CIRCULAR_REF');
+      }
       if (this.values[cellId] !== undefined) {
         return this.values[cellId];
       } else {

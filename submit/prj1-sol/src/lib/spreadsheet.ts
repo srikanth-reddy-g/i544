@@ -12,22 +12,31 @@ export class Spreadsheet {
   readonly name: string;
   cells: { [cellId: string]: Ast }; // Store the parsed expression for each cell
   values: { [cellId: string]: number }; // Store the evaluated value for each cell
+  visitedCells: string[];
 
   constructor(name: string) {
     this.name = name;
     this.cells = {};
     this.values = {};
+    this.visitedCells = [];
   }
 
   async eval(cellId: string, expr: string): Promise<Result<Updates>> {
+    if (this.visitedCells.includes(cellId)) {
+      const msg = `cyclic dependency ...`;
+      throw  errResult(msg, 'CIRCULAR_REF');
+    }
+
+    // Mark the current cell as visited
+    
     try {
       const parsedExpr = parse(expr, cellId);
-      // console.log(JSON.stringify(parsedExpr, null, 2));
+      console.log(JSON.stringify(parsedExpr, null, 2));
       if (parsedExpr.isOk) {
         this.cells[cellId] = parsedExpr.val; // Store the parsed expression
         const result = this.evaluateExpression(parsedExpr.val,cellId);
         this.values[cellId] = result; // Store the evaluated value
-        // console.log("Values stored in "+ cellId + " is "+this.values[cellId]);
+        console.log("Values stored in "+ cellId + " is "+this.values[cellId]);
         const updates: Updates = { [cellId]: result };
         for (const key in updates) {
           if (updates.hasOwnProperty(key)) {
@@ -37,15 +46,17 @@ export class Spreadsheet {
         }
         // Update dependent cells recursively
         this.updateDependentCells(cellId, updates);
-        // console.log('updates,',updates);
-        // console.log('values,',this.values);
-        // console.log('cells,',this.cells);
+        console.log('updates,',updates);
+        console.log('values,',this.values);
+        console.log('cells,',this.cells);
         return okResult(updates);
       } else {
         return errResult(parsedExpr, 'SYNTAX');
       }
     } catch (error) {
       return errResult(error, 'SYNTAX');
+    } finally {
+      this.visitedCells = [];
     }
   }
 
@@ -63,6 +74,11 @@ export class Spreadsheet {
     } else if (expr.kind === 'ref') {
       const baseCellRef = CellRef.parseRef(baseCellId);
       const cellId = expr.toText(baseCellRef);
+      this.visitedCells.push(cellId);
+      if (this.visitedCells.includes(baseCellId)) {
+        const msg = `cyclic dependency ...`;
+        throw  errResult(msg, 'CIRCULAR_REF');
+      }
       if(cellId === baseCellId){
         const msg = `cyclic dependency ...`;
         throw  errResult(msg, 'CIRCULAR_REF');
@@ -82,7 +98,7 @@ export class Spreadsheet {
       // console.log('inside updateDependentCells cells ', this.cells);
       if (this.cells.hasOwnProperty(id)) {
         const expr = this.cells[id];
-        console.log('expr ',expr);
+        // console.log('expr ',expr);
         if (this.isDependent(expr, id, cellId)) {
           // console.log('dependents ', id, cellId);
           const result = this.evaluateExpression(expr, id);

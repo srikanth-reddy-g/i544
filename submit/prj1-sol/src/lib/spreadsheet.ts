@@ -32,11 +32,14 @@ export class Spreadsheet {
         for (const key in updates) {
           if (updates.hasOwnProperty(key)) {
             const value = updates[key];
-            // console.log(`Key: ${key}, Value: ${value}`);
+            console.log(`Key: ${key}, Value: ${value}`);
           }
         }
         // Update dependent cells recursively
         this.updateDependentCells(cellId, updates);
+        // console.log('updates,',updates);
+        // console.log('values,',this.values);
+        // console.log('cells,',this.cells);
         return okResult(updates);
       } else {
         return errResult(parsedExpr, 'SYNTAX');
@@ -76,10 +79,13 @@ export class Spreadsheet {
 
   private updateDependentCells(cellId: string, updates: Updates) {
     for (const id in this.cells) {
+      // console.log('inside updateDependentCells cells ', this.cells);
       if (this.cells.hasOwnProperty(id)) {
         const expr = this.cells[id];
-        if (this.isDependent(expr, cellId)) {
-          const result = this.evaluateExpression(expr,cellId);
+        console.log('expr ',expr);
+        if (this.isDependent(expr, id, cellId)) {
+          // console.log('dependents ', id, cellId);
+          const result = this.evaluateExpression(expr, id);
           this.values[id] = result; // Update the value
           updates[id] = result; // Add to the updates object
           // Update dependent cells recursively
@@ -89,14 +95,23 @@ export class Spreadsheet {
     }
   }
 
-  private isDependent(expr: Ast, cellId: string): boolean {
-    if (expr.kind === 'app') {
-      return expr.kids.some((kid) => this.isDependent(kid, cellId));
-    } else if (expr.kind === 'ref') {
-      const baseCellRef = CellRef.parseRef(cellId);
+  private isDependent(expr: Ast, id: string, cellId: string): boolean {
+      if (expr.kind === 'app') {
+        const isDependent = expr.kids.some((kid) => {
+          const dependent = this.isDependent(kid, id, cellId);
+          // console.log(`Checking dependency: cellId=${cellId}, expr=${JSON.stringify(kid)}, dependent=${dependent}`);
+          return dependent;
+        });
+        // console.log(`Expression: cellId=${cellId}, expr=${JSON.stringify(expr)}, isDependent=${isDependent}`);
+        return isDependent;    
+      } 
+      else if (expr.kind === 'ref') {
+      const baseCellRef = CellRef.parseRef(id);
       const refCellId = expr.toText(baseCellRef);
+      // console.log('ref ', refCellId, id, cellId);
       return refCellId === cellId;
     } else {
+      // console.log('num ');
       return false;
     }
   }

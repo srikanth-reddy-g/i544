@@ -16,8 +16,8 @@ interface UndoObject {
 
 export class Spreadsheet {
   readonly name: string;
-  cells: { [cellId: string]: Ast }; // Store the parsed expression for each cell
-  values: { [cellId: string]: number }; // Store the evaluated value for each cell
+  cells: { [cellId: string]: Ast };
+  values: { [cellId: string]: number };
   visitedCells: string[];
   undoStack: UndoObject[]; 
 
@@ -35,8 +35,6 @@ export class Spreadsheet {
       throw  errResult(msg, 'CIRCULAR_REF');
     }
 
-    // Mark the current cell as visited
-
     const undoObject: UndoObject = {
       cellId,
       property: 'value',
@@ -45,24 +43,17 @@ export class Spreadsheet {
     
     try {
       const parsedExpr = parse(expr, cellId);
-      console.log(JSON.stringify(parsedExpr, null, 2));
       if (parsedExpr.isOk) {
-        this.cells[cellId] = parsedExpr.val; // Store the parsed expression
+        this.cells[cellId] = parsedExpr.val;
         const result = this.evaluateExpression(parsedExpr.val,cellId);
-        this.values[cellId] = result; // Store the evaluated value
-        console.log("Values stored in "+ cellId + " is "+this.values[cellId]);
+        this.values[cellId] = result;
         const updates: Updates = { [cellId]: result };
         for (const key in updates) {
           if (updates.hasOwnProperty(key)) {
             const value = updates[key];
-            console.log(`Key: ${key}, Value: ${value}`);
           }
         }
-        // Update dependent cells recursively
         this.updateDependentCells(cellId, updates);
-        console.log('updates,',updates);
-        console.log('values,',this.values);
-        console.log('cells,',this.cells);
         return okResult(updates);
       } else {
         return errResult(parsedExpr, 'SYNTAX');
@@ -103,7 +94,7 @@ export class Spreadsheet {
       if (this.values[cellId] !== undefined) {
         return this.values[cellId];
       } else {
-        return 0; // Return 0 for undefined cells
+        return 0;
       }
     } else {
       throw new Error(`Invalid expression: ${expr}`);
@@ -112,16 +103,12 @@ export class Spreadsheet {
 
   private updateDependentCells(cellId: string, updates: Updates) {
     for (const id in this.cells) {
-      // console.log('inside updateDependentCells cells ', this.cells);
       if (this.cells.hasOwnProperty(id)) {
         const expr = this.cells[id];
-        // console.log('expr ',expr);
         if (this.isDependent(expr, id, cellId)) {
-          // console.log('dependents ', id, cellId);
           const result = this.evaluateExpression(expr, id);
-          this.values[id] = result; // Update the value
-          updates[id] = result; // Add to the updates object
-          // Update dependent cells recursively
+          this.values[id] = result;
+          updates[id] = result;
           this.updateDependentCells(id, updates);
         }
       }
@@ -132,23 +119,18 @@ export class Spreadsheet {
       if (expr.kind === 'app') {
         const isDependent = expr.kids.some((kid) => {
           const dependent = this.isDependent(kid, id, cellId);
-          // console.log(`Checking dependency: cellId=${cellId}, expr=${JSON.stringify(kid)}, dependent=${dependent}`);
           return dependent;
         });
-        // console.log(`Expression: cellId=${cellId}, expr=${JSON.stringify(expr)}, isDependent=${isDependent}`);
         return isDependent;    
       } 
       else if (expr.kind === 'ref') {
       const baseCellRef = CellRef.parseRef(id);
       const refCellId = expr.toText(baseCellRef);
-      // console.log('ref ', refCellId, id, cellId);
       return refCellId === cellId;
     } else {
-      // console.log('num ');
       return false;
     }
   }
-
 
   private rollbackChanges() {
     while (this.undoStack.length > 0) {
@@ -158,7 +140,6 @@ export class Spreadsheet {
       }
     }
   }
-  
   
 }
 const FNS = {

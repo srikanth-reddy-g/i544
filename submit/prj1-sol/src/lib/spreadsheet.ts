@@ -1,25 +1,29 @@
+// Importing the necessary modules
 import { default as parse, CellRef, Ast } from './expr-parser.js';
 import { Result, okResult, errResult } from 'cs544-js-utils';
 
-// factory method
+// Factory method
 export default async function makeSpreadsheet(name: string): Promise<Result<Spreadsheet>> {
   return okResult(new Spreadsheet(name));
 }
 
+// Updates type for storing cell updates
 type Updates = { [cellId: string]: number };
 
+// Interface for representing an UndoObject
 interface UndoObject {
   cellId: string;
   property: string;
   oldValue: any;
 }
 
+// Class representing a Spreadsheet
 export class Spreadsheet {
   readonly name: string;
-  cells: { [cellId: string]: Ast };
-  values: { [cellId: string]: number };
-  visitedCells: string[];
-  undoStack: UndoObject[]; 
+  cells: { [cellId: string]: Ast }; // Object to store cell expressions
+  values: { [cellId: string]: number }; // Object to store cell values
+  visitedCells: string[]; // Array to store visited cell IDs during evaluation
+  undoStack: UndoObject[]; // Array to store undo objects
 
   constructor(name: string) {
     this.name = name;
@@ -29,10 +33,11 @@ export class Spreadsheet {
     this.undoStack = [];
   }
 
+  // Method to evaluate a cell expression
   async eval(cellId: string, expr: string): Promise<Result<Updates>> {
     if (this.visitedCells.includes(cellId)) {
       const msg = `cyclic dependency ...`;
-      throw  errResult(msg, 'CIRCULAR_REF');
+      throw errResult(msg, 'CIRCULAR_REF');
     }
 
     const undoObject: UndoObject = {
@@ -40,12 +45,12 @@ export class Spreadsheet {
       property: 'value',
       oldValue: this.values[cellId]
     };
-    
+
     try {
       const parsedExpr = parse(expr, cellId);
       if (parsedExpr.isOk) {
         this.cells[cellId] = parsedExpr.val;
-        const result = this.evaluateExpression(parsedExpr.val,cellId);
+        const result = this.evaluateExpression(parsedExpr.val, cellId);
         this.values[cellId] = result;
         const updates: Updates = { [cellId]: result };
         for (const key in updates) {
@@ -67,6 +72,7 @@ export class Spreadsheet {
     }
   }
 
+  // Method to evaluate an expression recursively
   private evaluateExpression(expr: Ast, baseCellId: string): number {
     if (expr.kind === 'num') {
       return expr.value;
@@ -85,11 +91,11 @@ export class Spreadsheet {
       if (this.visitedCells.includes(baseCellId)) {
         this.rollbackChanges();
         const msg = `cyclic dependency ...`;
-        throw  errResult(msg, 'CIRCULAR_REF');
+        throw errResult(msg, 'CIRCULAR_REF');
       }
-      if(cellId === baseCellId){
+      if (cellId === baseCellId) {
         const msg = `cyclic dependency ...`;
-        throw  errResult(msg, 'CIRCULAR_REF');
+        throw errResult(msg, 'CIRCULAR_REF');
       }
       if (this.values[cellId] !== undefined) {
         return this.values[cellId];
@@ -101,6 +107,7 @@ export class Spreadsheet {
     }
   }
 
+  // Method to update dependent cells recursively
   private updateDependentCells(cellId: string, updates: Updates) {
     for (const id in this.cells) {
       if (this.cells.hasOwnProperty(id)) {
@@ -115,15 +122,15 @@ export class Spreadsheet {
     }
   }
 
+  // Method to check if a cell expression is dependent on another cell
   private isDependent(expr: Ast, id: string, cellId: string): boolean {
-      if (expr.kind === 'app') {
-        const isDependent = expr.kids.some((kid) => {
-          const dependent = this.isDependent(kid, id, cellId);
-          return dependent;
-        });
-        return isDependent;    
-      } 
-      else if (expr.kind === 'ref') {
+    if (expr.kind === 'app') {
+      const isDependent = expr.kids.some((kid) => {
+        const dependent = this.isDependent(kid, id, cellId);
+        return dependent;
+      });
+      return isDependent;
+    } else if (expr.kind === 'ref') {
       const baseCellRef = CellRef.parseRef(id);
       const refCellId = expr.toText(baseCellRef);
       return refCellId === cellId;
@@ -132,6 +139,7 @@ export class Spreadsheet {
     }
   }
 
+  // Method to rollback changes by restoring old cell values
   private rollbackChanges() {
     while (this.undoStack.length > 0) {
       const undoObject = this.undoStack.pop();
@@ -140,8 +148,9 @@ export class Spreadsheet {
       }
     }
   }
-  
 }
+
+// Object containing arithmetic functions for evaluation
 const FNS = {
   '+': (a: number, b: number): number => a + b,
   '-': (a: number, b?: number): number => (b === undefined ? -a : a - b),

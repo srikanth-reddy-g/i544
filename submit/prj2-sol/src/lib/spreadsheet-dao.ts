@@ -44,7 +44,7 @@ export class SpreadsheetDao {
         this.collection = undefined;
         return okResult(undefined);
       } catch (error) {
-        return errResult([{ code: 'DB', message: error.message }]);
+        return errResult(error.message, 'DB');
       }
     }
     return okResult(undefined);
@@ -62,10 +62,10 @@ export class SpreadsheetDao {
         await this.collection.updateOne({ _id: cellId }, { $set: { expr } }, { upsert: true });
         return okResult(undefined);
       } catch (error) {
-        return errResult([{ code: 'DB', message: error.message }]);
+        return errResult(error.message, 'DB');
       }
     }
-    return errResult([{ code: 'DB', message: 'Database connection not established' }]);
+    return errResult('Database connection not established', 'DB');
   }
 
   /** Return expr for cell cellId; return '' for an empty/unknown cell. */
@@ -78,10 +78,10 @@ export class SpreadsheetDao {
         }
         return okResult('');
       } catch (error) {
-        return errResult([{ code: 'DB', message: error.message }]);
+        return errResult(error.message, 'DB');
       }
     }
-    return errResult([{ code: 'DB', message: 'Database connection not established' }]);
+    return errResult('Database connection not established', 'DB');
   }
 
   /** Clear contents of this spreadsheet */
@@ -91,10 +91,10 @@ export class SpreadsheetDao {
         await this.collection.deleteMany({});
         return okResult(undefined);
       } catch (error) {
-        return errResult([{ code: 'DB', message: error.message }]);
+        return errResult(error.message, 'DB');
       }
     }
-    return errResult([{ code: 'DB', message: 'Database connection not established' }]);
+    return errResult('Database connection not established', 'DB');
   }
 
   /** Remove all info for cellId from this spreadsheet. */
@@ -104,10 +104,10 @@ export class SpreadsheetDao {
         await this.collection.deleteOne({ _id: cellId });
         return okResult(undefined);
       } catch (error) {
-        return errResult([{ code: 'DB', message: error.message }]);
+        return errResult(error.message, 'DB');
       }
     }
-    return errResult([{ code: 'DB', message: 'Database connection not established' }]);
+    return errResult('Database connection not established', 'DB');
   }
 
   /** Return array of [ cellId, expr ] pairs for all cells in this spreadsheet */
@@ -118,9 +118,9 @@ export class SpreadsheetDao {
         const data: [string, string][] = results.map((result) => [result._id, result.expr]);
         return okResult(data);
       } catch (error) {
-        return errResult([{ code: 'DB', message: error.message }]);
+        return errResult(error.message, 'DB');
       }
     }
-    return errResult([{ code: 'DB', message: 'Database connection not established' }]);
+    return errResult('Database connection not established', 'DB');
   }
 }

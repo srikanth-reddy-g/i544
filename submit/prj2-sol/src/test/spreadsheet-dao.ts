@@ -61,6 +61,34 @@ describe('spreadsheet DAO', () => {
 
   it('must clear spreadsheet', async () => {
     //TODO
+    // const clearResult = await dao.clear();
+    // assert(clearResult.isOk === true);
+    // const queryResult = await dao.query('a1');
+    // assert(queryResult.isOk === true);
+    // expect(queryResult.val).to.equal('');
+    const cellExprs = [
+      ['a1', 'a2 * 3'],
+      ['a2', 'a3 + 4'],
+      ['a3', 'd5 / 6'],
+      ['d5', '42' ],
+    ];
+  
+    // Set cell expressions
+    for (const [cellId, expr] of cellExprs) {
+      const setResult = await dao.setCellExpr(cellId, expr);
+      assert(setResult.isOk === true);
+    }
+  
+    // Clear the spreadsheet
+    const clearResult = await dao.clear();
+    assert(clearResult.isOk === true);
+  
+    // Verify that all cells are cleared
+    for (const [cellId, expr] of cellExprs) {
+      const queryResult = await dao.query(cellId);
+      assert(queryResult.isOk === true);
+      expect(queryResult.val).to.equal('');
+    }
   });
   
   it('must remove cells from spreadsheet', async () => {

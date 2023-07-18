@@ -43,7 +43,7 @@ function setupRoutes(app: Express.Application) {
   //TODO
   app.get(`${base}/:ssName/:cellId`, makeGetCellHandler(app));
   app.patch(`${base}/:ssName/:cellId`, makeSetCellHandler(app));
-  app.patch(`${base}/:ssName/:cellId`, makeCopyCellHandler(app));
+  // app.patch(`${base}/:ssName/:cellId`, makeCopyCellHandler(app));
   app.delete(`${base}/:ssName/:cellId`, makeDeleteCellHandler(app));
   //routes for entire spreadsheets
   //TODO
@@ -100,10 +100,62 @@ function makeSetCellHandler(app: Express.Application) {
   return async function (req: Express.Request, res: Express.Response) {
     try {
       const { ssName, cellId } = req.params;
-      const { expr } = req.query;
+      const { expr, srcCellId } = req.query;
+      if(!expr && !srcCellId)
+      {
+        const error: ErrorEnvelope = {
+          isOk: false,
+          status: STATUS.BAD_REQUEST,
+          errors: [
+            {
+              message: "Missing query parameters.",
+              options: { code: "BAD_REQ" },
+            },
+          ],
+        };
+        res.status(error.status).json(error);
+        return ;
+      }
+      if(expr && srcCellId)
+      {
+        const error: ErrorEnvelope = {
+          isOk: false,
+          status: STATUS.BAD_REQUEST,
+          errors: [
+            {
+              message: "Missing query parameters.",
+              options: { code: "BAD_REQ" },
+            },
+          ],
+        };
+        res.status(error.status).json(error);
+        return ;
+      }
+      if (expr) 
+      {
       const result = await app.locals.ssServices.evaluate(ssName, cellId, expr);
       if (!result.isOk) throw result;
       res.status(STATUS.OK).json(selfResult(req, result.val));
+      } 
+      else if (srcCellId) 
+      {
+      const result = await app.locals.ssServices.copy(ssName,cellId,srcCellId);
+      if (!result.isOk) throw result;
+      res.status(STATUS.OK).json(selfResult(req, result.val));
+      }
+      // else if ((!expr && !srcCellId) || (!expr) || (!srcCellId)) {
+      //   const error: ErrorEnvelope = {
+      //     isOk: false,
+      //     status: STATUS.BAD_REQUEST,
+      //     errors: [
+      //       {
+      //         message: "Missing query parameters.",
+      //         options: { code: "BAD_REQ" },
+      //       },
+      //     ],
+      //   };
+      //   res.status(error.status).json(error);
+      // }
     } catch (err) {
       const mapped = mapResultErrors(err);
       res.status(mapped.status).json(mapped);
@@ -111,25 +163,25 @@ function makeSetCellHandler(app: Express.Application) {
   };
 }
 
-// Handler for PATCH copy cell
-function makeCopyCellHandler(app: Express.Application) {
-  return async function (req: Express.Request, res: Express.Response) {
-    try {
-      const { ssName, cellId } = req.params;
-      const { srcCellId } = req.query;
-      const result = await app.locals.ssServices.copy(
-        ssName,
-        cellId,
-        srcCellId
-      );
-      if (!result.isOk) throw result;
-      res.status(STATUS.OK).json(selfResult(req, result.val));
-    } catch (err) {
-      const mapped = mapResultErrors(err);
-      res.status(mapped.status).json(mapped);
-    }
-  };
-}
+// // Handler for PATCH copy cell
+// function makeCopyCellHandler(app: Express.Application) {
+//   return async function (req: Express.Request, res: Express.Response) {
+//     try {
+//       const { ssName, destCellId } = req.params;
+//       const { srcCellId } = req.query;
+//       const result = await app.locals.ssServices.copy(
+//         ssName,
+//         destCellId,
+//         srcCellId
+//       );
+//       if (!result.isOk) throw result;
+//       res.status(STATUS.OK).json(selfResult(req, result.val));
+//     } catch (err) {
+//       const mapped = mapResultErrors(err);
+//       res.status(mapped.status).json(mapped);
+//     }
+//   };
+// }
 // Handler for DELETE cell
 function makeDeleteCellHandler(app: Express.Application) {
   return async function (req: Express.Request, res: Express.Response) {

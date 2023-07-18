@@ -41,9 +41,15 @@ function setupRoutes(app: Express.Application) {
 
   //routes for individual cells
   //TODO
-
+  app.get(`${base}/:ssName/:cellId`, makeGetCellHandler(app));
+  app.patch(`${base}/:ssName/:cellId`, makeSetCellHandler(app));
+  app.patch(`${base}/:ssName/:cellId`, makeCopyCellHandler(app));
+  app.delete(`${base}/:ssName/:cellId`, makeDeleteCellHandler(app));
   //routes for entire spreadsheets
   //TODO
+  app.delete(`${base}/:ssName`, makeClearSpreadsheetHandler(app));
+  app.put(`${base}/:ssName`, makeLoadSpreadsheetHandler(app));
+  app.get(`${base}/:ssName`, makeGetSpreadsheetHandler(app));
 
   //generic handlers: must be last
   app.use(make404Handler(app));
@@ -74,10 +80,122 @@ function setupRoutes(app: Express.Application) {
 /****************** Handlers for Spreadsheet Cells *********************/
 
 //TODO
+function makeGetCellHandler(app: Express.Application) {
+  return async function(req: Express.Request, res: Express.Response) {
+    try {
+      const ssName = req.params.ssName;
+      const cellId = req.params.cellId;
+      const ssServices = app.locals.ssServices;
+      const result = await ssServices.query(ssName, cellId);
+      if (!result.isOk) throw result;
+      res.status(STATUS.OK).json(selfResult(req, result.val));
+    } catch (err) {
+      const mapped = mapResultErrors(err);
+      res.status(mapped.status).json(mapped);
+    }
+  };
+}
+// Handler for PATCH set cell
+function makeSetCellHandler(app: Express.Application) {
+  return async function (req: Express.Request, res: Express.Response) {
+    try {
+      const { ssName, cellId } = req.params;
+      const { expr } = req.query;
+      const result = await app.locals.ssServices.evaluate(ssName, cellId, expr);
+      if (!result.isOk) throw result;
+      res.status(STATUS.OK).json(selfResult(req, result.val));
+    } catch (err) {
+      const mapped = mapResultErrors(err);
+      res.status(mapped.status).json(mapped);
+    }
+  };
+}
+
+// Handler for PATCH copy cell
+function makeCopyCellHandler(app: Express.Application) {
+  return async function (req: Express.Request, res: Express.Response) {
+    try {
+      const { ssName, cellId } = req.params;
+      const { srcCellId } = req.query;
+      const result = await app.locals.ssServices.copy(
+        ssName,
+        cellId,
+        srcCellId
+      );
+      if (!result.isOk) throw result;
+      res.status(STATUS.OK).json(selfResult(req, result.val));
+    } catch (err) {
+      const mapped = mapResultErrors(err);
+      res.status(mapped.status).json(mapped);
+    }
+  };
+}
+// Handler for DELETE cell
+function makeDeleteCellHandler(app: Express.Application) {
+  return async function (req: Express.Request, res: Express.Response) {
+    try {
+      const { ssName, cellId } = req.params;
+      const result = await app.locals.ssServices.remove(ssName, cellId);
+      if (!result.isOk) throw result;
+      res.status(STATUS.OK).json(selfResult(req, result.val));
+    } catch (err) {
+      const mapped = mapResultErrors(err);
+      res.status(mapped.status).json(mapped);
+    }
+  };
+}
 
 /**************** Handlers for Complete Spreadsheets *******************/
 
 //TODO
+
+// Handler for DELETE clear spreadsheet
+function makeClearSpreadsheetHandler(app: Express.Application) {
+  return async function (req: Express.Request, res: Express.Response) {
+    try {
+      const { ssName } = req.params;
+      const result = await app.locals.ssServices.clear(ssName);
+      if (!result.isOk) throw result;
+      res.status(STATUS.OK).json(selfResult(req, result.val));
+    } catch (err) {
+      const mapped = mapResultErrors(err);
+      res.status(mapped.status).json(mapped);
+    }
+  };
+}
+// Handler for PUT load spreadsheet
+function makeLoadSpreadsheetHandler(app: Express.Application) {
+  return async function (req: Express.Request, res: Express.Response) {
+    try {
+      const { ssName } = req.params;
+      const result = await app.locals.ssServices.load(
+        ssName,
+        req.body
+      );
+      if (!result.isOk) throw result;
+      res.json(selfResult(req, result.val));
+    } catch (err) {
+      const mapped = mapResultErrors(err);
+      res.status(mapped.status).json(mapped);
+    }
+  };
+}
+
+// Handler for GET spreadsheet
+function makeGetSpreadsheetHandler(app: Express.Application) {
+  return async function (req: Express.Request, res: Express.Response) {
+    try {
+      const { ssName } = req.params;
+      const result = await app.locals.ssServices.dump(ssName);
+      if (!result.isOk) throw result;
+      res.json(selfResult(req, result.val));
+    } catch (err) {
+      const mapped = mapResultErrors(err);
+      res.status(mapped.status).json(mapped);
+    }
+  };
+}
+
 
 /*************************** Generic Handlers **************************/
 

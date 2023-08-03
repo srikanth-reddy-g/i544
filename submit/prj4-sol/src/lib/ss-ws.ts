@@ -110,11 +110,28 @@ function makeURL(url: string, queryParams: Record<string, string|number> = {}) {
  *    + If there are no errors then the function should return the
  *      response result within an ok Result.
  */
-async function doFetchJson<T>(method: string, url: URL,
-			      jsonBody?: object)
-  : Promise<Result<T>> 
-{
-  //TODO
-  return okResult('TODO' as any);
+async function doFetchJson<T>(method: string, url: URL, jsonBody?: object): Promise<Result<T>> {
+  try {
+    let options :Object= {
+      method: method,
+    headers: {
+      'Content-Type': 'application/json',
+    }
+   };
+   if(jsonBody)
+     options  = {...options,jsonBody};
+    const response = await fetch(url.toString(), options);
+
+    const data = await response.json();
+
+    if (response.ok) {
+
+      return okResult(data.result as T);
+    } else {
+      return errResult(data.errors[0].message);
+    }
+  } catch (err) {
+    return errResult({ error: err.message });
+  }
 }
 
